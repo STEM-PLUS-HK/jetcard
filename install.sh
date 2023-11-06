@@ -29,21 +29,23 @@ sudo -H pip3 install jetson-stats
 # Install the pre-built PyTorch pip wheel 
 echo "\e[45m Install the pre-built PyTorch pip wheel  \e[0m"
 cd
-wget -N https://nvidia.box.com/shared/static/9eptse6jyly1ggt9axbja2yrmj6pbarc.whl -O torch-1.6.0-cp36-cp36m-linux_aarch64.whl 
+wget -N https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl -O torch-1.10.0-cp36-cp36m-linux_aarch64.whl 
 sudo apt-get install -y python3-pip libopenblas-base libopenmpi-dev 
-sudo -H pip3 install Cython
-sudo -H pip3 install numpy==1.19.4 torch-1.6.0-cp36-cp36m-linux_aarch64.whl
+sudo -H pip3 install Cython==0.29.36
+sudo -H pip3 install numpy torch-1.10.0-cp36-cp36m-linux_aarch64.whl
 
 # Install torchvision package
 echo "\e[45m Install torchvision package \e[0m"
 cd
-git clone https://github.com/pytorch/vision torchvision
+git clone --branch release/0.11 https://github.com/pytorch/vision torchvision
 cd torchvision
-sudo apt-get install -y libavcodec-dev libavformat-dev libswscale-dev
-git checkout tags/v0.7.0
+sudo apt-get install -y libjpeg-dev zlib1g-dev libpython3-dev libopenblas-dev libavcodec-dev libavformat-dev libswscale-dev
+export BUILD_VERSION=0.11.1
 sudo -H python3 setup.py install
 cd  ../
 sudo -H pip3 install pillow
+
+#fk up start here
 
 # pip dependencies for pytorch-ssd
 echo "\e[45m Install dependencies for pytorch-ssd \e[0m"
@@ -58,9 +60,11 @@ sudo apt-get update
 sudo apt-get install -y libhdf5-serial-dev hdf5-tools libhdf5-dev zlib1g-dev zip libjpeg8-dev liblapack-dev libblas-dev gfortran
 
 sudo apt-get install -y python3-pip
+sudo python3 -m pip install --upgrade pip
 sudo -H pip3 install -U pip testresources setuptools==49.6.0 
 sudo -H pip3 install -U numpy==1.19.4 future==0.18.2 mock==3.0.5 h5py==2.10.0 keras_preprocessing==1.1.1 keras_applications==1.0.8 gast==0.2.2 futures protobuf pybind11
-sudo -H pip3 install --pre --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v45  'tensorflow<2'
+sudo -H pip3 install --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v461 tensorflow==2.7.0+nv22.1
+sudo -H pip3 install --pre --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v46  'tensorflow<2'
 
 # Install TensorFlow models repository
 echo "\e[48;5;202m Install TensorFlow models repository \e[0m"
