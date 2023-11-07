@@ -47,7 +47,7 @@ sudo -H pip3 install pillow
 
 # pip dependencies for pytorch-ssd
 echo "\e[45m Install dependencies for pytorch-ssd \e[0m"
-sudo -H pip3 install protobuf==3.3.0
+sudo -H pip3 install protobuf==3.19.6
 sudo -H pip3 install boto3 pandas
 
 # seems the following command will work, not tested
