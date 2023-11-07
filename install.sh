@@ -45,23 +45,19 @@ sudo -H python3 setup.py install
 cd  ../
 sudo -H pip3 install pillow
 
-#fk up start here
-
 # pip dependencies for pytorch-ssd
 echo "\e[45m Install dependencies for pytorch-ssd \e[0m"
-sudo -H pip3 install --verbose --upgrade Cython && \
-sudo -H pip3 install --verbose boto3 pandas
+sudo -H pip3 install protobuf==3.3.0
+sudo -H pip3 install boto3 pandas
 
-
-
+# seems the following command will work, not tested
 # Install the pre-built TensorFlow pip wheel
 echo "\e[48;5;202m Install the pre-built TensorFlow pip wheel \e[0m"$ sudo apt-get update
 sudo apt-get install -y python3-pip pkg-config
-sudo apt-get install -y libhdf5-serial-dev hdf5-tools libhdf5-dev zlib1g-dev zip libjpeg8-dev liblapack-dev libblas-dev gfortran
 sudo ln -s /usr/include/locale.h /usr/include/xlocale.h
-
-sudo pip3 install --verbose 'protobuf<4' 'Cython<3'
-cd
+sudo apt install -y libhdf5-serial-dev hdf5-tools libhdf5-dev zlib1g-dev zip libjpeg8-dev liblapack-dev libblas-dev gfortran
+sudo pip3 install -U --no-deps numpy==1.19.4 future==0.18.2 mock==3.0.5 keras_preprocessing==1.1.2 keras_applications==1.0.8 gast==0.4.0 protobuf==3.19.6 pybind11 cython pkgconfig
+sudo pip3 install --verbose 'Cython<3'
 sudo wget --no-check-certificate https://developer.download.nvidia.com/compute/redist/jp/v461/tensorflow/tensorflow-2.7.0+nv22.1-cp36-cp36m-linux_aarch64.whl
 sudo pip3 install --verbose tensorflow-2.7.0+nv22.1-cp36-cp36m-linux_aarch64.whl
 
