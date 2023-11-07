@@ -56,41 +56,58 @@ echo "\e[48;5;202m Install the pre-built TensorFlow pip wheel \e[0m"$ sudo apt-g
 sudo apt-get install -y python3-pip pkg-config
 sudo ln -s /usr/include/locale.h /usr/include/xlocale.h
 sudo apt install -y libhdf5-serial-dev hdf5-tools libhdf5-dev zlib1g-dev zip libjpeg8-dev liblapack-dev libblas-dev gfortran
-sudo pip3 install -U --no-deps numpy==1.19.4 future==0.18.2 mock==3.0.5 keras_preprocessing==1.1.2 keras_applications==1.0.8 gast==0.4.0 protobuf==3.19.6 pybind11 cython pkgconfig
+sudo pip3 install -U --no-deps numpy==1.19.4 future==0.18.2 mock==3.0.5 keras_preprocessing==1.1.2 keras_applications==1.0.8 gast==0.4.0 protobuf==3.19.6 pybind11 pkgconfig
 sudo pip3 install --verbose 'Cython<3'
 sudo wget --no-check-certificate https://developer.download.nvidia.com/compute/redist/jp/v461/tensorflow/tensorflow-2.7.0+nv22.1-cp36-cp36m-linux_aarch64.whl
 sudo pip3 install --verbose tensorflow-2.7.0+nv22.1-cp36-cp36m-linux_aarch64.whl
 
 # Install TensorFlow models repository
-echo "\e[48;5;202m Install TensorFlow models repository \e[0m"
+echo "\e[48;5;202m Install TensorFlow models \e[0m"
 cd
-url="https://github.com/tensorflow/models"
-tf_models_dir="TF-models"
-if [ ! -d "$tf_models_dir" ] ; then
-	git clone $url $tf_models_dir
-	cd "$tf_models_dir"/research
-	git checkout 5f4d34fc
-	wget -O protobuf.zip https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-aarch_64.zip
-	# wget -O protobuf.zip https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
-	unzip protobuf.zip
-	./bin/protoc object_detection/protos/*.proto --python_out=.
-	sudo -H python3 setup.py install
-	cd slim
-	sudo -H python3 setup.py install
-fi
+# install bazel
+wget -O bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-arm64
+sudo mv bazelisk /usr/local/bin/bazel
+sudo chmod +x /usr/local/bin/bazel
+# install tensorflow-addons
+cd
+sudo mv /usr/bin/python /usr/bin/python2
+sudo ln -s /usr/bin/python3 /usr/bin/python
+git clone -b r0.15 https://github.com/tensorflow/addons.git tensorflow-addons
+cd tensorflow-addons
+export TF_NEED_CUDA="1"
+export TF_CUDA_VERSION="10"
+export TF_CUDNN_VERSION="8"
+export CUDA_TOOLKIT_PATH="/usr/local/cuda"
+export CUDNN_INSTALL_PATH="/usr/lib/aarch64-linux-gnu"
+python3 ./configure.py
+bazel build build_pip_pkg
+bazel-bin/build_pip_pkg artifacts
+sudo -H pip3 install artifacts/tensorflow_addons-*.whl
+sudo rm /usr/bin/python
+sudo mv /usr/bin/python2 /usr/bin/python
+# Install TensorFlow models repository
+sudo -H pip3 install tf-models-official
 
 
 
 # Install traitlets (master, to support the unlink() method)
 echo "\e[48;5;172m Install traitlets \e[0m"
-#sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@master
-sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@dead2b8cdde5913572254cf6dc70b5a6065b86f8
+sudo -H pip3 install traitlets
+#sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@dead2b8cdde5913572254cf6dc70b5a6065b86f8
 
-# Install JupyterLab (lock to 2.2.6, latest as of Sept 2020)
-echo "\e[48;5;172m Install Jupyter Lab 2.2.6 \e[0m"
-curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-sudo apt install -y nodejs libffi-dev libssl1.0-dev 
-sudo -H pip3 install jupyter jupyterlab==2.2.6 --verbose
+# Install JupyterLab (lock to 3.2.9, latest stable release on python3.6?)
+echo "\e[48;5;172m Install Jupyter Lab 3.2.9 \e[0m"
+# install nodejs 16x
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_16.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+sudo apt-get update
+sudo apt-get install nodejs -y
+
+sudo apt install -y libffi-dev libssl1.0-dev 
+sudo -H pip3 install jupyter jupyterlab==3.2.9 --verbose
 sudo -H jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 jupyter lab --generate-config
