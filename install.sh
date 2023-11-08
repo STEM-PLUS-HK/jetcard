@@ -50,7 +50,6 @@ echo "\e[45m Install dependencies for pytorch-ssd \e[0m"
 sudo -H pip3 install protobuf==3.19.6
 sudo -H pip3 install boto3 pandas
 
-# seems the following command will work, not tested
 # Install the pre-built TensorFlow pip wheel
 echo "\e[48;5;202m Install the pre-built TensorFlow pip wheel \e[0m"$ sudo apt-get update
 sudo apt-get install -y python3-pip pkg-config
@@ -63,6 +62,16 @@ sudo pip3 install --verbose tensorflow-2.7.0+nv22.1-cp36-cp36m-linux_aarch64.whl
 
 # Install TensorFlow models repository
 echo "\e[48;5;202m Install TensorFlow models \e[0m"
+cd
+# install newer cmake
+sudo apt-get -y remove cmake
+wget -O cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.28.0-rc4/cmake-3.28.0-rc4-linux-aarch64.tar.gz
+tar -zxvf cmake.tar.gz
+cd cmake-3.28.0-rc4-linux-aarch64
+sudo cp -rf bin/ doc/ share/ /usr/local/
+sudo cp -rf man/* /usr/local/man
+sync
+hash -r
 cd
 # install bazel
 wget -O bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-arm64
@@ -86,6 +95,9 @@ sudo -H pip3 install artifacts/tensorflow_addons-*.whl
 sudo rm /usr/bin/python
 sudo mv /usr/bin/python2 /usr/bin/python
 # Install TensorFlow models repository
+sudo -H pip3 install --ignore-installed httplib2
+sudo -H pip3 install --ignore-installed launchpadlib
+sudo -H pip3 install --ignore-installed PyYAML
 sudo -H pip3 install tf-models-official
 
 
