@@ -150,7 +150,7 @@ sudo -H jupyter lab build
 # INSTALL jetcam
 # =================
 cd $HOME
-git clone https://github.com/NVIDIA-AI-IOT/jetcam
+git clone https://github.com/STEM-PLUS-HK/jetcam.git
 cd jetcam
 sudo -H python3 setup.py install
 
