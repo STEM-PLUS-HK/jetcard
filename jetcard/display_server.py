@@ -191,6 +191,7 @@ class DisplayServer(object):
             pass
         self.menu_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.menu_socket.bind(self.menu_address)
+        os.chmod(self.menu_address, 0o777)
         self.menu_socket.listen(1)
         self.menu_socket.setblocking(False)
         self.menu_connection = []
