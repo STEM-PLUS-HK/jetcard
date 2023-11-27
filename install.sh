@@ -107,8 +107,8 @@ echo "\e[48;5;172m Install traitlets \e[0m"
 sudo -H pip3 install traitlets
 #sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@dead2b8cdde5913572254cf6dc70b5a6065b86f8
 
-# Install JupyterLab (lock to 3.2.9, latest stable release on python3.6?)
-echo "\e[48;5;172m Install Jupyter Lab 3.2.9 \e[0m"
+# Install JupyterLab (lock to 2.3.2, can't go higher, or jupyter_clickable_image_widget fails to appear)
+echo "\e[48;5;172m Install Jupyter Lab 2.3.2 \e[0m"
 # install nodejs 16x
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
@@ -119,7 +119,7 @@ sudo apt-get update
 sudo apt-get install nodejs -y
 
 sudo apt install -y libffi-dev libssl1.0-dev 
-sudo -H pip3 install jupyter jupyterlab==3.2.9 --verbose
+sudo -H pip3 install jupyter jupyterlab==2.3.2 --verbose
 sudo -H jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 jupyter lab --generate-config
