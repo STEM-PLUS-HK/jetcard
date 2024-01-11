@@ -51,12 +51,12 @@ class Menu:
         self.obj_list.append(obj)
     def reset(self, obj):
         self.obj_list = ['return']
-    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction):
+    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
         if action == SwitchAction.PRESS_CENTER:
             if self.obj_list[self.select_idx] == 'return':
                 return self.root
             else:
-                return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING)
+                return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
         elif action == SwitchAction.PRESS_UP:
             self.select_idx -= 1
         elif action == SwitchAction.PRESS_DOWN:
@@ -115,8 +115,7 @@ class Variable:
         return self.value
     def set_value(self, value):
         self.value = value
-    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction):
-        global menu_connection
+    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
         if action == SwitchAction.PRESS_CENTER:
             # Here should send the value out
             packet = {'action':'value_update', 'uuid':self.uuid, 'value':self.value}
@@ -129,7 +128,7 @@ class Variable:
                     conn["connection"].sendall(data_out)
                 except:
                     pass #better process should be delete the conn
-            self.root.display(draw, SwitchAction.RESS_NOTHING)
+            self.root.display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
             return self.root
         elif action == SwitchAction.PRESS_LEFT:
             if self.step:
@@ -274,7 +273,7 @@ class DisplayServer(object):
                     if self.das_count > 5:
                         self.das_count = 6
                         action = self.das_action
-                self.menu_ptr = self.menu_ptr.display(self.disp_info, self.draw, action)
+                self.menu_ptr = self.menu_ptr.display(self.disp_info, self.draw, action, self.menu_connection)
                 self.display.image(self.image)
                 self.display.display()
                 if self.menu_ptr == None:
@@ -402,4 +401,3 @@ def set_text(text):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port='8000', debug=False)
-
