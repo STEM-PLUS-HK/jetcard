@@ -56,6 +56,10 @@ class OLEDMenu:
         
 oled_menu = OLEDMenu()
 
+def reset_menu():
+    global oled_menu
+    oled_menu.reset()
+
 class Menu:
     def __init__(self, root=None, description=""):
         global oled_menu
