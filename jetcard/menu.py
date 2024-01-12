@@ -49,7 +49,6 @@ class OLEDMenu:
         else:
             arg['value'] = obj.get_value()
             arg['step'] = obj.get_step()
-            print(arg)
             self.send({'action': 'create_var', 'arg': arg})
         self.obj_list.append(obj)
         
