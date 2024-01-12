@@ -18,7 +18,8 @@ class Menu(jetcard.menu.Menu):
 class FloatSlider(FloatVariable, ipywidgets.FloatSlider):
     def __init__(self, root=None, *args, **kwargs):
         self.update_from_menu = False
-        super().__init__(root=root, *args, **kwargs)
+        super(FloatVariable, self).__init__(root=root, *args, **kwargs)
+        super(ipywidgets.FloatSlider, self).__init__(root=root, *args, **kwargs)
             
     # used by OLEDMenu class only
     def update(self, value):
@@ -35,7 +36,8 @@ class FloatSlider(FloatVariable, ipywidgets.FloatSlider):
 class IntSlider(IntVariable, ipywidgets.IntSlider):
     def __init__(self, root=None, *args, **kwargs):
         self.update_from_menu = False
-        super().__init__(*args, **kwargs)
+        super(IntVariable, self).__init__(*args, **kwargs)
+        super(ipywidgets.IntSlider, self).__init__(root=root, *args, **kwargs)
         
     # used by OLEDMenu class only
     def update(self, value):
