@@ -130,19 +130,18 @@ class Variable:
                     pass #better process should be delete the conn
             self.root.display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
             return self.root
-        elif action == SwitchAction.PRESS_LEFT:
-            if self.step:
+        elif self.step:
+            if action == SwitchAction.PRESS_LEFT:
                 self.value -= self.step
-        elif action == SwitchAction.PRESS_RIGHT:
-            if self.step:
+            elif action == SwitchAction.PRESS_RIGHT:
                 self.value += self.step
-        elif action == SwitchAction.PRESS_UP:
-            if self.step:
+            elif action == SwitchAction.PRESS_UP:
                 self.value -= self.step*10
-        elif action == SwitchAction.PRESS_DOWN:
-            if self.step:
+            elif action == SwitchAction.PRESS_DOWN:
                 self.value += self.step*10
-        self.value = round(self.value, self.step_exponent)
+            self.value = round(self.value, self.step_exponent)
+        elif action != SwitchAction.PRESS_NOTHING and type(self.value) == bool:
+            self.value = not self.value
         x = (disp_info.line_width - len(self.name)*disp_info.font_width) // 2
         draw.text((x, 2), self.name, font=disp_info.font, fill=255)
         x = (disp_info.line_width - len("<<  "+str(self.value)+"  >>")*disp_info.font_width) // 2
@@ -401,3 +400,4 @@ def set_text(text):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port='8000', debug=False)
+
