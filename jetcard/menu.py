@@ -79,11 +79,6 @@ class Variable:
         self._step = step
         self._description = description
         oled_menu.add(self)
-        # hacky way to trick MRO
-        try:
-            super().__init__(root=root, value=float(value), step=step, description=description, *args, **kwargs)
-        except:
-            pass
         
     # used by OLEDMenu class only
     def update(self,value):
