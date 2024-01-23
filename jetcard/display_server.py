@@ -49,7 +49,7 @@ class Menu:
         return ">> " + self.name, ""
     def add(self, obj):
         self.obj_list.append(obj)
-    def reset(self, obj):
+    def reset(self):
         self.obj_list = ['return']
     def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
         if action == SwitchAction.PRESS_CENTER:
@@ -110,7 +110,7 @@ class Variable:
         else:
             self.step_exponent = None
     def get_display_info(self):
-        return self.name, self.value
+        return self.name, self.value if self.value != None else ""
     def get(self):
         return self.value
     def set_value(self, value):
@@ -148,7 +148,80 @@ class Variable:
         draw.text((x, 16), "<<  "+str(self.value)+"  >>",  font=disp_info.font, fill=255)
         return self
 
-
+class Function(Menu):
+    def __init__(self, root=None, name="", uuid=""):
+        super().__init__(root=root, name=name, uuid=uuid)
+        self.obj_list = []
+        self.callback_running = False
+    def get_display_info(self):
+        return "[  " + self.name + "  ]", ""
+    def add(self, obj):
+        super().add(obj)
+        self.select_idx = len(self.obj_list)-1
+    def reset(self):
+        self.callback_running = False
+        self.obj_list = []
+    def add_finish_return(self):
+        self.obj_list.append('return')
+        self.select_idx = len(self.obj_list)-1
+    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
+        if not self.callback_running:
+            self.callback_running = True
+            packet = {'action':'value_update', 'uuid':self.uuid, 'value':'call'}
+            packet_string = json.dumps(packet)
+            data_out = packet_string.encode()
+            packet_len = len(data_out)
+            data_out = bytes([packet_len&0xFF, (packet_len>>8)&0xFF]) + data_out
+            for conn in menu_connection:
+                try:
+                    conn["connection"].sendall(data_out)
+                except:
+                    pass #better process should be delete the conn
+        if action == SwitchAction.PRESS_CENTER:
+            if len(self.obj_list) and self.obj_list[self.select_idx] == 'return':
+                self.reset()
+                return self.root
+        elif action == SwitchAction.PRESS_UP:
+            self.select_idx -= 1
+        elif action == SwitchAction.PRESS_DOWN:
+            self.select_idx += 1
+        if self.select_idx < 0:
+            self.select_idx = len(self.obj_list)-1
+            self.first_display_idx = max(len(self.obj_list) - disp_info.max_line, 0)
+        elif self.select_idx >= len(self.obj_list):
+            self.select_idx = 0
+            self.first_display_idx = 0
+        elif self.select_idx < self.first_display_idx:
+            self.first_display_idx = self.select_idx
+        elif self.select_idx == self.first_display_idx + disp_info.max_line:
+            self.first_display_idx += 1
+        for i in range(disp_info.max_line):
+            idx = self.first_display_idx + i
+            if idx == len(self.obj_list):
+                break
+            x = 0
+            y = disp_info.line_height * i - 2
+            obj = self.obj_list[idx]
+            if obj == 'return':
+                name, value = "<< Return", ""
+            else:
+                name, value = obj.get_display_info()
+            if idx == self.select_idx:
+                draw.rectangle((x, y+2, disp_info.line_width, y+disp_info.line_height+2), outline=255, fill=255)
+                draw.text((x, y), name, font=disp_info.font, fill=0)
+                value_str = str(value)
+                if len(value_str):
+                    x = disp_info.line_width - len(value_str)*disp_info.font_width
+                    draw.text((x, y), value_str, font=disp_info.font, fill=0)
+            else:
+                draw.text((x, y), name, font=disp_info.font, fill=255)
+                value_str = str(value)
+                if len(value_str):
+                    x = disp_info.line_width - len(value_str)*disp_info.font_width
+                    draw.text((x, y), value_str, font=disp_info.font, fill=255)
+        return self
+    
+    
 class DisplayServer(object):
     
     def __init__(self, *args, **kwargs):
@@ -219,18 +292,37 @@ class DisplayServer(object):
                                     conn['recv_data'] = conn['recv_data'][packet_length+2:] #remove processed data
                                     packet = json.loads(packet.decode())
                                     if packet['action'] == 'reset_menu':
-                                        self.root_menu = Menu()
-                                        self.menu_ptr = self.root_menu
+                                        if 'uuid' in packet:
+                                            ptr = self.find_menu(self.root_menu, packet['uuid'])
+                                            if ptr != None:
+                                                ptr.reset()
+                                        else:
+                                            self.root_menu = Menu()
+                                            self.menu_ptr = self.root_menu
                                     elif packet['action'] == 'create_menu':
                                         self.menu_temp_ptr = self.find_menu(self.root_menu, packet['arg']['root'])
                                         packet['arg']['root'] = self.menu_temp_ptr
                                         self.menu_temp_ptr.add(Menu(**packet['arg']))
+                                    elif packet['action'] == 'create_func':
+                                        self.menu_temp_ptr = self.find_menu(self.root_menu, packet['arg']['root'])
+                                        packet['arg']['root'] = self.menu_temp_ptr
+                                        self.menu_temp_ptr.add(Function(**packet['arg']))
                                     elif packet['action'] == 'create_var':
                                         self.menu_temp_ptr = self.find_menu(self.root_menu, packet['arg']['root'])
                                         packet['arg']['root'] = self.menu_temp_ptr
                                         self.menu_temp_ptr.add(Variable(**packet['arg']))
                                     elif packet['action'] == 'value_update':
-                                        self.find_menu(self.root_menu, packet['uuid']).set_value(packet['value'])
+                                        ptr = self.find_menu(self.root_menu, packet['uuid'])
+                                        if ptr != None:
+                                            if isinstance(ptr, Function):
+                                                if packet['value']:
+                                                    #immediate return
+                                                    self.menu_ptr = self.menu_ptr.root
+                                                    ptr.reset()
+                                                else:
+                                                    ptr.add_finish_return()
+                                            else:
+                                                ptr.set_value(packet['value'])
                                 else:
                                     break
                             else:
@@ -334,10 +426,10 @@ class DisplayServer(object):
                     time.sleep(0.1)
             
     def find_menu(self, root, uuid):
-        if type(root) == Menu or type(root) == Variable:
+        if isinstance(root, Menu) or isinstance(root, Variable):
             if root.uuid == uuid:
                 return root
-        if type(root) == Menu:
+        if isinstance(root, Menu):
             for o in root.obj_list:
                 res = self.find_menu(o, uuid)
                 if res:
