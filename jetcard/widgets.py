@@ -6,20 +6,20 @@ import time
 import json
 from traitlets import HasTraits, observe
 import jetcard.menu
-from jetcard.menu import FloatVariable, IntVariable, BoolVariable, reset_menu
+from jetcard.menu import FloatVariable, IntVariable, BoolVariable, Function, reset_menu
 
 def reset_menu():
     jetcard.menu.reset_menu()
 
 class Menu(jetcard.menu.Menu):
-    def __init__(self, root=None, description="", *args, **kwargs):
-        super().__init__(root=root, description=description, *args, **kwargs)
+    def __init__(self, *args, root=None, description="", **kwargs):
+        super().__init__(*args, root=root, description=description, **kwargs)
 
 class FloatSlider(FloatVariable, ipywidgets.FloatSlider):
-    def __init__(self, root=None, *args, **kwargs):
+    def __init__(self, *args, root=None, **kwargs):
         self.update_from_menu = False
-        super(FloatVariable, self).__init__(root=root, *args, **kwargs)
-        super(ipywidgets.FloatSlider, self).__init__(root=root, *args, **kwargs)
+        FloatVariable.__init__(self, *args, root=root, **kwargs)
+        ipywidgets.FloatSlider.__init__(self, *args, root=root, **kwargs)
             
     # used by OLEDMenu class only
     def update(self, value):
@@ -34,10 +34,10 @@ class FloatSlider(FloatVariable, ipywidgets.FloatSlider):
             self.set_value(change['new'])
             
 class IntSlider(IntVariable, ipywidgets.IntSlider):
-    def __init__(self, root=None, *args, **kwargs):
+    def __init__(self, *args, root=None, **kwargs):
         self.update_from_menu = False
-        super(IntVariable, self).__init__(*args, **kwargs)
-        super(ipywidgets.IntSlider, self).__init__(root=root, *args, **kwargs)
+        IntVariable.__init__(self, *args, root=root, **kwargs)
+        ipywidgets.IntSlider.__init__(self, *args, root=root, **kwargs)
         
     # used by OLEDMenu class only
     def update(self, value):
@@ -51,8 +51,31 @@ class IntSlider(IntVariable, ipywidgets.IntSlider):
         if not self.update_from_menu:
             self.set_value(change['new'])
 
-# class ToggleButton(ipywidgets.ToggleButton):
-#     def __init__(self, root=None, **arg):
-#         global oled_menu
-#         super().__init__(**arg)
-#         self.root = root
+class Button(Function, ipywidgets.Button):
+    def __init__(self, *args, root=None, **kwargs):
+        Function.__init__(self, self.gen_menu_callback(), *args, root=root, **kwargs)
+        ipywidgets.Button.__init__(self, *args, root=root, **kwargs)
+        self.callback_list = []
+    
+    def gen_menu_callback(self):
+        def menu_callback(func_obj):
+            print(self.callback_list)
+            for cb in self.callback_list:
+                cb(func_obj, None)
+            return True
+        return menu_callback
+
+    def gen_widget_callback(self, callback):
+        def widget_callback(b):
+            return callback(None, b)
+        return widget_callback
+
+    def on_click(self, callback, remove=False):
+        '''
+        callback(func_obj, b)
+        '''
+        if remove:
+            self.callback_list.remove(callback)
+        else:
+            self.callback_list.append(callback)
+        super().on_click(callback=self.gen_widget_callback(callback), remove=remove)
