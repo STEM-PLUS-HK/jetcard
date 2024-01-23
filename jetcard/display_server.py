@@ -12,7 +12,7 @@ import socket
 import decimal
 import json
 from enum import Enum
-
+from typing import Tuple, Union, Any
 
 UP_CHANNEL = 13
 RIGHT_CHANNEL = 15
@@ -30,37 +30,77 @@ class SwitchAction(Enum):
 
 
 class DisplayInfo:
-    def __init__(self, display_width, display_height, font, font_width, font_height):
+    def __init__(self, display_width: int, display_height: int, font: int, font_width: int, font_height: int) -> None:
         self.max_line = display_height // font_height
         self.line_height = font_height
         self.line_width = display_width
         self.font = font
         self.font_width = font_width
 
-class Menu:
-    def __init__(self, root=None, name="", uuid="base"):
+class Item:
+    def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "base") -> None:
         self.root = root
         self.name = name
-        self.obj_list = ['return']
-        self.select_idx = 0
-        self.first_display_idx = 0
         self.uuid = uuid
-    def get_display_info(self):
-        return ">> " + self.name, ""
-    def add(self, obj):
-        self.obj_list.append(obj)
-    def reset(self):
-        self.obj_list = ['return']
-    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
+        self.lhs_display = ""
+        self.rhs_display = ""
+        self.press_cb = [self.dummy_callback, self.dummy_callback, self.dummy_callback, self.dummy_callback, self.dummy_callback, self.dummy_callback]
+    def get_display_info(self) -> Tuple[str, str]:
+        return self.lhs_display, self.rhs_display
+    def dummy_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
+        return self
+    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
+        return self.press_cb[SwitchAction.PRESS_CENTER](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+    def press_up_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
+        return self.press_cb[SwitchAction.PRESS_UP](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+    def press_down_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
+        return self.press_cb[SwitchAction.PRESS_DOWN](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+    def press_left_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
+        return self.press_cb[SwitchAction.PRESS_LEFT](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+    def press_right_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
+        return self.press_cb[SwitchAction.PRESS_RIGHT](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection: dict) -> Any:
         if action == SwitchAction.PRESS_CENTER:
-            if self.obj_list[self.select_idx] == 'return':
-                return self.root
-            else:
-                return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
+            ret = self.press_center_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
         elif action == SwitchAction.PRESS_UP:
-            self.select_idx -= 1
+            ret = self.press_up_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
         elif action == SwitchAction.PRESS_DOWN:
-            self.select_idx += 1
+            ret = self.press_down_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+        elif action == SwitchAction.PRESS_LEFT:
+            ret = self.press_left_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+        elif action == SwitchAction.PRESS_RIGHT:
+            ret = self.press_right_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+        return self if ret == None else ret
+
+class Menu(Item):
+    class ReturnItem(Item):
+        def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "base") -> None:
+
+    def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "base") -> None:
+        super().__init__(root=root, name=name, uuid=uuid)
+        return_item: Item = Item(root=self, name=)
+        self.obj_list: list[Item] = ['return']
+        self.select_idx: int = 0
+        self.first_display_idx: int = 0
+        self.lhs_display: str = ">> " + name
+    def add(self, obj: Item) -> None:
+        self.obj_list.append(obj)
+    def reset(self) -> None:
+        self.obj_list = ['return']
+    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Item, None]:
+        if self.obj_list[self.select_idx] == 'return':
+            return self.root
+        else:
+            return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
+    def press_up_callback(self, disp_info: DisplayInfo, draw: Any, menu_connection: dict) -> Union[Any, None]:
+        self.select_idx -= 1
+    def press_down_callback(self, disp_info: DisplayInfo, draw: Any, menu_connection: dict) -> Union[Any, None]:
+        self.select_idx += 1
+    def display(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, action: SwitchAction, menu_connection: dict) -> Any:
+        ret = super().display(disp_info=disp_info, draw=draw, action=action, menu_connection=menu_connection)
+        if ret != self:
+            return ret
+        
         if self.select_idx < 0:
             self.select_idx = len(self.obj_list)-1
             self.first_display_idx = max(len(self.obj_list) - disp_info.max_line, 0)
