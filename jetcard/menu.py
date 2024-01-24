@@ -3,59 +3,59 @@ import threading
 import uuid
 import time
 import json
+from jetcard.display_server import IPCConnection, IPCPacket
+from typing import Union, Any
+
+class IPCClient(IPCConnection):
+    def __init__(self, address: str) -> None:
+        self.address: str = address
+        conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        conn.connect(address)
+        super().__init__(connection=conn, blocking=True)
 
 class OLEDMenu:
-    def __init__(self):
+    def __init__(self) -> None:
+        self.obj_list: list[Item] = []
+        self.actions = {'update_value': self.update_value}
         menu_address = '/tmp/menu_socket'
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.connect(menu_address)
-        self.obj_list = []
-        self.recv_thread = threading.Thread(target=self._recv)
-        self.recv_thread.start()
+        self.ipc = IPCClient(menu_address)
+        self.ipc_recv_thread = threading.Thread(target=self.ipc_recv)
+        self.ipc_recv_thread.start()
         
-    def reset(self):
-        self.send({'action': 'reset_menu'})
-        
-    def _recv(self):
-        var_id = None
-        var_value = None
-        recv_data = bytes([])
+    def reset(self) -> None:
+        self.send(IPCPacket(action='reset_menu'))
+
+    def update_value(self, *args, uuid: Union[str, None] = None, value: Any = True, **kwargs) -> None:
+        for item in self.obj_list:
+            if item.uuid == uuid:
+                item.update(value)
+                break
+
+    def ipc_recv(self) -> None:
         while True:
-            recv_data += self.sock.recv(1024)
-            
-            packet_length = recv_data[0] | (recv_data[1]<<8)
-            packet = recv_data[2:packet_length+2]
-            recv_data = recv_data[packet_length+2:] #remove processed data
-            packet = json.loads(packet.decode())
-            if packet['action'] == 'value_update':
-                for o in self.obj_list:
-                    if o.uuid == packet['uuid']:
-                        o.update(packet['value'])
-                        break
+            packets = self.ipc.recv()
+            for packet in packets:
+                self.actions[packet.action](self, *packet.args, **packet.kwargs)
                     
-    def send(self, packet):
-        packet_string = json.dumps(packet)
-        data_out = packet_string.encode()
-        packet_len = len(data_out)
-        data_out = bytes([packet_len&0xFF, (packet_len>>8)&0xFF]) + data_out
-        self.sock.sendall(data_out)
+    def send(self, packet: IPCPacket) -> None:
+        self.ipc.send([packet])
     
-    def add(self, obj):
-        arg = {'root': obj.root.uuid if obj.root else 'base',
-               'name': obj.get_description(),
-               'uuid': obj.uuid}
+    def add(self, obj: 'Item') -> None:
+        kwargs = {'root': obj.root.uuid if obj.root else 'base',
+                  'name': obj.get_description(),
+                  'uuid': obj.uuid}
+        action = "create_item"
         if isinstance(obj, Function):
-            self.send({'action': 'create_func', 'arg': arg})
+            kwargs['create_type'] = 'func'
         elif isinstance(obj, Menu):
-            self.send({'action': 'create_menu', 'arg': arg})
+            kwargs['create_type'] = 'menu'
         elif isinstance(obj, Variable):
-            arg['value'] = obj.get_value()
-            arg['step'] = obj.get_step()
-            self.send({'action': 'create_var', 'arg': arg})
+            kwargs['create_type'] = 'var'
+            kwargs['value'] = obj.get_value()
+            kwargs['step'] = obj.get_step()
         else:
-            arg['value'] = None
-            arg['step'] = None
-            self.send({'action': 'create_var', 'arg': arg})
+            kwargs['create_type'] = 'item'
+        self.send(IPCPacket(action=action, kwargs=kwargs))
         self.obj_list.append(obj)
         
 oled_menu = OLEDMenu()
@@ -75,6 +75,10 @@ class Item:
     def get_description(self):
         return self._description
     
+    # used by OLEDMenu class only
+    def update(self, value: Union[Any, None] = None):
+        pass
+
 class Menu(Item):
     def __init__(self, *args, root=None, description="", **kwargs):
         super().__init__(*args, root=root, description=description, **kwargs)
@@ -82,8 +86,7 @@ class Menu(Item):
     def reset(self):
         global oled_menu
         if hasattr(self, 'uuid'):
-            packet = {'action':'reset_menu', 'uuid':self.uuid}
-            oled_menu.send(packet)
+            oled_menu.send(IPCPacket(action='reset_menu', kwargs={'uuid': self.uuid}))
     
 class Function(Menu):
     def __init__(self, callback_func, *args, root=None, description="", **kwargs):
@@ -106,11 +109,12 @@ class Function(Menu):
         global oled_menu
         ret = True if self.callback == None else self.callback(self)
         if hasattr(self, 'uuid'):
-            packet = {'action':'value_update', 'uuid':self.uuid, 'value':ret==True}
-            oled_menu.send(packet)
+            oled_menu.send(IPCPacket(action='update_value', kwargs={'uuid':self.uuid, 'value':ret==True}))
             
-    def callback_print(self, output):
-        print_data = str(output)
+    def callback_print(self, *args):
+        print_data = ""
+        for arg in args:
+            print_data += str(arg) + " "
         item = Item(root=self, description=print_data)
     
 class Variable(Item):
@@ -118,10 +122,6 @@ class Variable(Item):
         self._value = value
         self._step = step
         super().__init__(*args, root=root, description=description, **kwargs)
-        
-    # used by OLEDMenu class only
-    def update(self,value):
-        raise NotImplementedError("Derived class should implement this method")
     
     def get_value(self):
         return self._value
@@ -130,8 +130,8 @@ class Variable(Item):
         global oled_menu
         self._value = value
         if hasattr(self, 'uuid'):
-            packet = {'action':'value_update', 'uuid':self.uuid, 'value':value}
-            oled_menu.send(packet)
+            packet = {'action':'update_value', 'uuid':self.uuid, 'value':value}
+            oled_menu.send(IPCPacket(action='update_value', kwargs={'uuid':self.uuid, 'value':value}))
         
     def get_step(self):
         return self._step
