@@ -12,7 +12,8 @@ import socket
 import decimal
 import json
 from enum import Enum
-from typing import Tuple, Union, Any
+from typing import List, Tuple, Union, Any
+from uuid import uuid4
 
 UP_CHANNEL = 13
 RIGHT_CHANNEL = 15
@@ -38,69 +39,84 @@ class DisplayInfo:
         self.font_width = font_width
 
 class Item:
-    def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "base") -> None:
-        self.root = root
-        self.name = name
-        self.uuid = uuid
-        self.lhs_display = ""
-        self.rhs_display = ""
-        self.press_cb = [self.dummy_callback, self.dummy_callback, self.dummy_callback, self.dummy_callback, self.dummy_callback, self.dummy_callback]
+    def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "") -> None:
+        assert uuid != "", "uuid field cannot be empty string"
+        self.root: Union[Any, None] = root
+        self.name: str = name
+        self.uuid: str = uuid
+        self.lhs_display: str = name
+        self.rhs_display: str = ""
     def get_display_info(self) -> Tuple[str, str]:
         return self.lhs_display, self.rhs_display
-    def dummy_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
-        return self
-    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
-        return self.press_cb[SwitchAction.PRESS_CENTER](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
-    def press_up_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
-        return self.press_cb[SwitchAction.PRESS_UP](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
-    def press_down_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
-        return self.press_cb[SwitchAction.PRESS_DOWN](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
-    def press_left_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
-        return self.press_cb[SwitchAction.PRESS_LEFT](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
-    def press_right_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Any, None]:
-        return self.press_cb[SwitchAction.PRESS_RIGHT](self, disp_info=disp_info, draw=draw, menu_connection=menu_connection)
-    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection: dict) -> Any:
+    def find(self, uuid: str) -> Union[Any, None]:
+        return self if self.uuid == uuid else None
+    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        return None
+    def press_up_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        return None
+    def press_down_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        return None
+    def press_left_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        return None
+    def press_right_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        return None
+    def render(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Any:
+        return self.root    # won't render anything in Item, so return back to its root
+    def display(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, action: SwitchAction, ipc: 'IPC') -> Any:
+        ret = None
         if action == SwitchAction.PRESS_CENTER:
-            ret = self.press_center_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+            ret = self.press_center_callback(disp_info=disp_info, draw=draw, ipc=ipc)
         elif action == SwitchAction.PRESS_UP:
-            ret = self.press_up_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+            ret = self.press_up_callback(disp_info=disp_info, draw=draw, ipc=ipc)
         elif action == SwitchAction.PRESS_DOWN:
-            ret = self.press_down_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+            ret = self.press_down_callback(disp_info=disp_info, draw=draw, ipc=ipc)
         elif action == SwitchAction.PRESS_LEFT:
-            ret = self.press_left_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
+            ret = self.press_left_callback(disp_info=disp_info, draw=draw, ipc=ipc)
         elif action == SwitchAction.PRESS_RIGHT:
-            ret = self.press_right_callback(disp_info=disp_info, draw=draw, menu_connection=menu_connection)
-        return self if ret == None else ret
+            ret = self.press_right_callback(disp_info=disp_info, draw=draw, ipc=ipc)
+        if ret == None:
+            ret = self.render(disp_info=disp_info, draw=draw, ipc=ipc)
+        return ret
+
+class Return(Item):
+    def __init__(self, root: Union[Any, None] = None, display: str = "<< Return", uuid: Union[str, None] = None, callback: Union[callable, None] = None) -> None:
+        if uuid == None:
+            uuid = "return" + str(uuid4()) # generate a uuid, adding a "return" prefix, ensure not duplicate with other
+        super().__init__(root=root, name="return", uuid=uuid)
+        self.lhs_display = display
+        self.callback = callback
+    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, ipc: 'IPC') -> Any:
+        if self.callback:
+            self.callback()
+        return self.root.root
 
 class Menu(Item):
-    class ReturnItem(Item):
-        def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "base") -> None:
-
     def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "base") -> None:
         super().__init__(root=root, name=name, uuid=uuid)
-        return_item: Item = Item(root=self, name=)
-        self.obj_list: list[Item] = ['return']
+        return_item: Return = Return(root=self)
+        self.obj_list: list[Item] = [return_item]
         self.select_idx: int = 0
         self.first_display_idx: int = 0
-        self.lhs_display: str = ">> " + name
+        self.lhs_display = ">> " + name
     def add(self, obj: Item) -> None:
         self.obj_list.append(obj)
     def reset(self) -> None:
-        self.obj_list = ['return']
-    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, menu_connection: dict) -> Union[Item, None]:
-        if self.obj_list[self.select_idx] == 'return':
-            return self.root
-        else:
-            return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
-    def press_up_callback(self, disp_info: DisplayInfo, draw: Any, menu_connection: dict) -> Union[Any, None]:
+        self.obj_list = self.obj_list[:1]
+    def find(self, uuid: str) -> Union[Item, None]:
+        ret = super().find(uuid)
+        if ret == None:
+            for o in self.obj_list:
+                ret = o.find(uuid)
+                if ret != None:
+                    break
+        return ret
+    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Item, None]:
+        return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING, ipc)
+    def press_up_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
         self.select_idx -= 1
-    def press_down_callback(self, disp_info: DisplayInfo, draw: Any, menu_connection: dict) -> Union[Any, None]:
+    def press_down_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
         self.select_idx += 1
-    def display(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, action: SwitchAction, menu_connection: dict) -> Any:
-        ret = super().display(disp_info=disp_info, draw=draw, action=action, menu_connection=menu_connection)
-        if ret != self:
-            return ret
-        
+    def render(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Any:
         if self.select_idx < 0:
             self.select_idx = len(self.obj_list)-1
             self.first_display_idx = max(len(self.obj_list) - disp_info.max_line, 0)
@@ -118,150 +134,167 @@ class Menu(Item):
             x = 0
             y = disp_info.line_height * i - 2
             obj = self.obj_list[idx]
-            if obj == 'return':
-                name, value = "<< Return", ""
-            else:
-                name, value = obj.get_display_info()
+            lhs, rhs = obj.get_display_info()
             if idx == self.select_idx:
                 draw.rectangle((x, y+2, disp_info.line_width, y+disp_info.line_height+2), outline=255, fill=255)
-                draw.text((x, y), name, font=disp_info.font, fill=0)
-                value_str = str(value)
-                if len(value_str):
-                    x = disp_info.line_width - len(value_str)*disp_info.font_width
-                    draw.text((x, y), value_str, font=disp_info.font, fill=0)
+                fill = 0
             else:
-                draw.text((x, y), name, font=disp_info.font, fill=255)
-                value_str = str(value)
-                if len(value_str):
-                    x = disp_info.line_width - len(value_str)*disp_info.font_width
-                    draw.text((x, y), value_str, font=disp_info.font, fill=255)
+                fill = 255
+            draw.text((x, y), lhs, font=disp_info.font, fill=fill)
+            rhs_len = len(rhs)
+            if rhs_len:
+                x = disp_info.line_width - rhs_len * disp_info.font_width
+                draw.text((x, y), rhs, font=disp_info.font, fill=fill)
         return self
-            
-        
-class Variable:
-    def __init__(self, root=None, name="", value=0, step=None, uuid=""):
-        self.root = root
-        self.name = name
+
+class Variable(Item):
+    def __init__(self, root: Union[Any, None] = None, name: str = "", value: Any = 0, step: Union[Any, None] = None, uuid: str = "") -> None:
+        super().__init__(root=root, name=name, uuid=uuid)
         self.value = value
         self.step = step
-        self.uuid = uuid
-        if step:
-            self.step_exponent = -decimal.Decimal(str(step)).as_tuple().exponent
-        else:
-            self.step_exponent = None
-    def get_display_info(self):
-        return self.name, self.value if self.value != None else ""
-    def get(self):
-        return self.value
-    def set_value(self, value):
-        self.value = value
-    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
-        if action == SwitchAction.PRESS_CENTER:
-            # Here should send the value out
-            packet = {'action':'value_update', 'uuid':self.uuid, 'value':self.value}
-            packet_string = json.dumps(packet)
-            data_out = packet_string.encode()
-            packet_len = len(data_out)
-            data_out = bytes([packet_len&0xFF, (packet_len>>8)&0xFF]) + data_out
-            for conn in menu_connection:
-                try:
-                    conn["connection"].sendall(data_out)
-                except:
-                    pass #better process should be delete the conn
-            self.root.display(disp_info, draw, SwitchAction.PRESS_NOTHING, menu_connection)
-            return self.root
-        elif self.step:
-            if action == SwitchAction.PRESS_LEFT:
-                self.value -= self.step
-            elif action == SwitchAction.PRESS_RIGHT:
-                self.value += self.step
-            elif action == SwitchAction.PRESS_UP:
-                self.value -= self.step*10
-            elif action == SwitchAction.PRESS_DOWN:
-                self.value += self.step*10
+        self.step_exponent = -decimal.Decimal(str(step)).as_tuple().exponent if step else None
+        self.lhs_display = self.name
+        self.rhs_display = str(self.value) if self.value != None else ""
+    def update_value(self, value: Union[Any, None] = None, change: Union[Any, None] = None) -> None:
+        if value != None:
+            self.value = value
+        elif change != None:
+            if self.step != None:
+                self.value += self.step*change
+            elif isinstance(self.value, bool):
+                self.value = not self.value
+        if self.step_exponent != None:
             self.value = round(self.value, self.step_exponent)
-        elif action != SwitchAction.PRESS_NOTHING and type(self.value) == bool:
-            self.value = not self.value
-        x = (disp_info.line_width - len(self.name)*disp_info.font_width) // 2
+        self.rhs_display = str(self.value)
+    def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        # User accept result, send the value back to client
+        ipc.send([IPCPacket(action='update_value', kwargs={'uuid': self.uuid, 'value':self.value})])
+        return self.root
+    def press_up_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        self.update_value(change=-10)
+    def press_down_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        self.update_value(change=10)
+    def press_left_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        self.update_value(change=-1)
+    def press_right_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
+        self.update_value(change=1)
+    def render(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Any:
+        x = (disp_info.line_width - len(self.name) * disp_info.font_width) // 2
         draw.text((x, 2), self.name, font=disp_info.font, fill=255)
-        x = (disp_info.line_width - len("<<  "+str(self.value)+"  >>")*disp_info.font_width) // 2
-        draw.text((x, 16), "<<  "+str(self.value)+"  >>",  font=disp_info.font, fill=255)
+        value_str = "<<  " + str(self.value) + "  >>"
+        x = (disp_info.line_width - len(value_str) * disp_info.font_width) // 2
+        draw.text((x, 16), value_str,  font=disp_info.font, fill=255)
         return self
 
 class Function(Menu):
-    def __init__(self, root=None, name="", uuid=""):
+    def __init__(self, root: Union[Any, None] = None, name: str = "", uuid: str = "") -> None:
         super().__init__(root=root, name=name, uuid=uuid)
         self.obj_list = []
-        self.callback_running = False
-    def get_display_info(self):
-        return "[  " + self.name + "  ]", ""
+        self.callback_running: bool = False
+        self.lhs_display = "[ {name} ]".format(name=self.name)
     def add(self, obj):
         super().add(obj)
         self.select_idx = len(self.obj_list)-1
+    def add_finish_return(self):
+        return_item: Return = Return(root=self, display="<< completed, return", callback=self.reset)
+        self.add(return_item)
     def reset(self):
         self.callback_running = False
         self.obj_list = []
-    def add_finish_return(self):
-        self.obj_list.append('return')
-        self.select_idx = len(self.obj_list)-1
-    def display(self, disp_info: DisplayInfo, draw, action: SwitchAction, menu_connection):
+    def display(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, action: SwitchAction, ipc: 'IPC') -> Any:
         if not self.callback_running:
+            self.reset()
             self.callback_running = True
-            packet = {'action':'value_update', 'uuid':self.uuid, 'value':'call'}
-            packet_string = json.dumps(packet)
-            data_out = packet_string.encode()
-            packet_len = len(data_out)
-            data_out = bytes([packet_len&0xFF, (packet_len>>8)&0xFF]) + data_out
-            for conn in menu_connection:
-                try:
-                    conn["connection"].sendall(data_out)
-                except:
-                    pass #better process should be delete the conn
-        if action == SwitchAction.PRESS_CENTER:
-            if len(self.obj_list) and self.obj_list[self.select_idx] == 'return':
-                self.reset()
-                return self.root
-        elif action == SwitchAction.PRESS_UP:
-            self.select_idx -= 1
-        elif action == SwitchAction.PRESS_DOWN:
-            self.select_idx += 1
-        if self.select_idx < 0:
-            self.select_idx = len(self.obj_list)-1
-            self.first_display_idx = max(len(self.obj_list) - disp_info.max_line, 0)
-        elif self.select_idx >= len(self.obj_list):
-            self.select_idx = 0
-            self.first_display_idx = 0
-        elif self.select_idx < self.first_display_idx:
-            self.first_display_idx = self.select_idx
-        elif self.select_idx == self.first_display_idx + disp_info.max_line:
-            self.first_display_idx += 1
-        for i in range(disp_info.max_line):
-            idx = self.first_display_idx + i
-            if idx == len(self.obj_list):
+            ipc.send([IPCPacket(action='update_value', kwargs={'uuid': self.uuid, 'value': 'call'})])
+        return super().display(disp_info=disp_info, draw=draw, action=action, ipc=ipc)
+    
+class IPCPacket:
+    def __init__(self, json_str: Union[str, None] = None, action: Union[str, None] = None, args: list = [], kwargs: dict = {}) -> None:
+        if json_str != None:
+            packet = json.loads(json_str)
+            self.action = packet['action']
+            self.args = packet['args']
+            self.kwargs = packet['kwargs']
+        elif action != None:
+            self.action = action
+            self.args = args
+            self.kwargs = kwargs
+    def stringify(self) -> str:
+        packet = {'action': self.action,
+                  'args': self.args,
+                  'kwargs': self.kwargs}
+        return json.dumps(packet)
+
+class IPCConnection:
+    def __init__(self, connection: socket.socket, blocking: bool = False) -> None:
+        self.connection = connection
+        self.connection.setblocking(blocking)
+        self.recv_data = bytes([])
+    def recv(self) -> List[IPCPacket]:
+        try:
+            data = self.connection.recv(1024)
+            if data:
+                self.recv_data += data
+        except BlockingIOError:
+            # no client send data
+            pass
+        recv_packets: list[IPCPacket] = []
+        # first two byte is the packet length, big endian, after that is json string
+        data_len = len(self.recv_data)
+        while data_len > 2:
+            packet_len = self.recv_data[0] | (self.recv_data[1]<<8)
+            if data_len - 2 >= packet_len:
+                recv_packets.append(IPCPacket(json_str=self.recv_data[2:packet_len+2].decode()))
+                self.recv_data = self.recv_data[packet_len+2:]  # remove processed data
+                data_len = len(self.recv_data)    # update remaining data length
+            else:
                 break
-            x = 0
-            y = disp_info.line_height * i - 2
-            obj = self.obj_list[idx]
-            if obj == 'return':
-                name, value = "<< Return", ""
-            else:
-                name, value = obj.get_display_info()
-            if idx == self.select_idx:
-                draw.rectangle((x, y+2, disp_info.line_width, y+disp_info.line_height+2), outline=255, fill=255)
-                draw.text((x, y), name, font=disp_info.font, fill=0)
-                value_str = str(value)
-                if len(value_str):
-                    x = disp_info.line_width - len(value_str)*disp_info.font_width
-                    draw.text((x, y), value_str, font=disp_info.font, fill=0)
-            else:
-                draw.text((x, y), name, font=disp_info.font, fill=255)
-                value_str = str(value)
-                if len(value_str):
-                    x = disp_info.line_width - len(value_str)*disp_info.font_width
-                    draw.text((x, y), value_str, font=disp_info.font, fill=255)
-        return self
-    
-    
+        return recv_packets
+    def send(self, packets: List[IPCPacket]) -> bool:
+        '''
+        return status of sending packets
+        '''
+        send_data = bytes([])
+        for packet in packets:
+            packet_bytes = packet.stringify().encode()
+            packet_len = len(packet_bytes)
+            send_data += bytes([packet_len&0xFF, (packet_len>>8)&0xFF]) + packet_bytes
+        try:
+            self.connection.sendall(send_data)
+            return True
+        except:
+            return False
+
+class IPC:
+    def __init__(self, address: str) -> None:
+        self.address: str = address
+        try:
+            os.remove(self.address)
+        except OSError:
+            pass
+        self.socket: socket.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.socket.bind(self.address)
+        os.chmod(self.address, 0o777)   # giving permission such that non root user can still connect to this socket
+        self.socket.listen(1)
+        self.socket.setblocking(False)
+        self.reset()
+    def reset(self) -> None:
+        self.connections: list[IPCConnection] = []
+    def recv(self) -> List[IPCPacket]:
+        try:
+            conn, addr = self.socket.accept()
+            self.connections.append(IPCConnection(conn))
+        except BlockingIOError:
+            pass
+        recv_packets: list[IPCPacket] = []
+        for conn in self.connections:
+            recv_packets += conn.recv()
+        return recv_packets
+    def send(self, packets: List[IPCPacket]) -> None:
+        for conn in self.connections:
+            if conn.send(packets) == False:
+                self.connections.remove(conn)   # clean up broken connection
+
 class DisplayServer(object):
     
     def __init__(self, *args, **kwargs):
@@ -280,7 +313,6 @@ class DisplayServer(object):
         self.disp_info = DisplayInfo(self.image.width, self.image.height, self.font, 6, 8)
         self.root_menu = Menu()
         self.menu_ptr = self.root_menu
-        self.menu_temp_ptr = None
         self.menu_on = False
         self.das_count = 0
         self.das_action = SwitchAction.PRESS_NOTHING
@@ -295,84 +327,51 @@ class DisplayServer(object):
         GPIO.add_event_detect(LEFT_CHANNEL, GPIO.RISING, bouncetime=200)
         GPIO.add_event_detect(DOWN_CHANNEL, GPIO.RISING, bouncetime=200)
         GPIO.add_event_detect(CENTER_CHANNEL, GPIO.RISING, bouncetime=200)
-        self.menu_address = '/tmp/menu_socket'
-        try:
-            os.remove(self.menu_address)
-        except OSError:
-            pass
-        self.menu_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.menu_socket.bind(self.menu_address)
-        os.chmod(self.menu_address, 0o777)
-        self.menu_socket.listen(1)
-        self.menu_socket.setblocking(False)
-        self.menu_connection = []
+        self.ipc = IPC('/tmp/menu_socket')
+        self.actions = {
+            'reset_menu': self.reset_menu,
+            'create_item': self.create_item,
+            'update_value': self.update_value
+        }
         self.enable_stats()
         
+    def reset_menu(self, *args, uuid: Union[str, None] = None, **kwargs) -> None:
+        ptr = self.root_menu.find(uuid)
+        if ptr == None:
+            self.root_menu = Menu()
+            self.menu_ptr = self.root_menu
+        elif isinstance(ptr, Menu):
+            # make sure the menu_ptr is not inside the reset item set
+            if ptr != self.menu_ptr and ptr.find(self.menu_ptr.uuid) != None:
+                self.menu_ptr = ptr
+            ptr.reset()
+
+    def create_item(self, *args, create_type: str = 'item', root: Union[str, None] = None, **kwargs) -> None:
+        root_ptr = self.root_menu.find(root)
+        CREATE_TYPE = {'item': Item,
+                       'menu': Menu,
+                       'func': Function,
+                       'var': Variable}
+        if isinstance(root_ptr, Menu) and create_type in CREATE_TYPE:
+            root_ptr.add(CREATE_TYPE[create_type](*args, root=root_ptr, **kwargs))
+
+    def update_value(self, *args, uuid: Union[str, None] = None, value: Any = True, **kwargs) -> None:
+        ptr = self.root_menu.find(uuid)
+        if isinstance(ptr, Function):
+            if value:
+                #immediate return
+                self.menu_ptr = self.menu_ptr.root
+                ptr.reset()
+            else:
+                ptr.add_finish_return()
+        elif isinstance(ptr, Variable):
+            ptr.update_value(value)
+
     def _run_display_stats(self):
         while self.stats_enabled:
-            try:
-                conn, addr = self.menu_socket.accept()
-                conn.setblocking(False)
-                self.menu_connection.append({"connection": conn, "recv_data": bytes([])})
-            except BlockingIOError:
-                pass
-            for conn in self.menu_connection:
-                try:
-                    data = conn["connection"].recv(1024)
-                    if data:
-                        # process data
-                        conn["recv_data"] += data
-                        # first two byte is the packet length, big endian, after that is json string
-                        while len(conn['recv_data']):
-                            recv_data = conn['recv_data']
-                            if len(recv_data) >= 2:
-                                packet_length = recv_data[0] | (recv_data[1]<<8)
-                                if len(recv_data)-2 >= packet_length:
-                                    packet = recv_data[2:packet_length+2]
-                                    conn['recv_data'] = conn['recv_data'][packet_length+2:] #remove processed data
-                                    packet = json.loads(packet.decode())
-                                    if packet['action'] == 'reset_menu':
-                                        if 'uuid' in packet:
-                                            ptr = self.find_menu(self.root_menu, packet['uuid'])
-                                            if ptr != None:
-                                                ptr.reset()
-                                        else:
-                                            self.root_menu = Menu()
-                                            self.menu_ptr = self.root_menu
-                                    elif packet['action'] == 'create_menu':
-                                        self.menu_temp_ptr = self.find_menu(self.root_menu, packet['arg']['root'])
-                                        packet['arg']['root'] = self.menu_temp_ptr
-                                        self.menu_temp_ptr.add(Menu(**packet['arg']))
-                                    elif packet['action'] == 'create_func':
-                                        self.menu_temp_ptr = self.find_menu(self.root_menu, packet['arg']['root'])
-                                        packet['arg']['root'] = self.menu_temp_ptr
-                                        self.menu_temp_ptr.add(Function(**packet['arg']))
-                                    elif packet['action'] == 'create_var':
-                                        self.menu_temp_ptr = self.find_menu(self.root_menu, packet['arg']['root'])
-                                        packet['arg']['root'] = self.menu_temp_ptr
-                                        self.menu_temp_ptr.add(Variable(**packet['arg']))
-                                    elif packet['action'] == 'value_update':
-                                        ptr = self.find_menu(self.root_menu, packet['uuid'])
-                                        if ptr != None:
-                                            if isinstance(ptr, Function):
-                                                if packet['value']:
-                                                    #immediate return
-                                                    self.menu_ptr = self.menu_ptr.root
-                                                    ptr.reset()
-                                                else:
-                                                    ptr.add_finish_return()
-                                            else:
-                                                ptr.set_value(packet['value'])
-                                else:
-                                    break
-                            else:
-                                break
-                    else:
-                        # client connection closed
-                        self.menu_connection.remove(conn)            
-                except BlockingIOError:
-                    # no client send data
-                    pass
+            packets = self.ipc.recv()
+            for packet in packets:
+                self.actions[packet.action](*packet.args, **packet.kwargs)
             if self.menu_on:
                 self.draw.rectangle((0, 0, self.image.width, self.image.height), outline=0, fill=0)
                 action = SwitchAction.PRESS_NOTHING
@@ -404,7 +403,7 @@ class DisplayServer(object):
                     if self.das_count > 5:
                         self.das_count = 6
                         action = self.das_action
-                self.menu_ptr = self.menu_ptr.display(self.disp_info, self.draw, action, self.menu_connection)
+                self.menu_ptr = self.menu_ptr.display(self.disp_info, self.draw, action, self.ipc)
                 self.display.image(self.image)
                 self.display.display()
                 if self.menu_ptr == None:
@@ -464,17 +463,6 @@ class DisplayServer(object):
                             pass
                         self.menu_on = True
                     time.sleep(0.1)
-            
-    def find_menu(self, root, uuid):
-        if isinstance(root, Menu) or isinstance(root, Variable):
-            if root.uuid == uuid:
-                return root
-        if isinstance(root, Menu):
-            for o in root.obj_list:
-                res = self.find_menu(o, uuid)
-                if res:
-                    return res
-        return None
 
     def enable_stats(self):
         # start stats display thread
@@ -505,7 +493,6 @@ class DisplayServer(object):
         self.display.display()
         
 
-server = DisplayServer()
 app = Flask(__name__)
 
 
@@ -531,5 +518,6 @@ def set_text(text):
 
 
 if __name__ == '__main__':
+    server = DisplayServer()
     app.run(host='0.0.0.0', port='8000', debug=False)
 
