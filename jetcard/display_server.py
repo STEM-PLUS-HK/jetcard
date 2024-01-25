@@ -111,7 +111,9 @@ class Menu(Item):
                     break
         return ret
     def press_center_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Item, None]:
-        return self.obj_list[self.select_idx].display(disp_info, draw, SwitchAction.PRESS_NOTHING, ipc)
+        if len(self.obj_list) == 0:
+            return None
+        return self.obj_list[self.select_idx]#.display(disp_info, draw, SwitchAction.PRESS_NOTHING, ipc)
     def press_up_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
         self.select_idx -= 1
     def press_down_callback(self, disp_info: DisplayInfo, draw: PIL.ImageDraw, ipc: 'IPC') -> Union[Any, None]:
