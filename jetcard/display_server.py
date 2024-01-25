@@ -101,6 +101,9 @@ class Menu(Item):
     def add(self, obj: Item) -> None:
         self.obj_list.append(obj)
     def reset(self) -> None:
+        for o in self.obj_list:
+            if isinstance(o, Menu):
+                o.reset()
         self.obj_list = self.obj_list[:1]
     def find(self, uuid: str) -> Union[Item, None]:
         ret = super().find(uuid)
@@ -340,6 +343,7 @@ class DisplayServer(object):
     def reset_menu(self, *args, uuid: Union[str, None] = None, **kwargs) -> None:
         ptr = self.root_menu.find(uuid)
         if ptr == None:
+            self.root_menu.reset()
             self.root_menu = Menu()
             self.menu_ptr = self.root_menu
         elif isinstance(ptr, Menu):
