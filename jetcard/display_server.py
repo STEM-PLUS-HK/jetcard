@@ -130,8 +130,9 @@ class Menu(Item):
             self.first_display_idx = 0
         elif self.select_idx < self.first_display_idx:
             self.first_display_idx = self.select_idx
-        elif self.select_idx == self.first_display_idx + disp_info.max_line:
-            self.first_display_idx += 1
+        elif self.select_idx >= self.first_display_idx + disp_info.max_line:
+            self.first_display_idx = self.select_idx - disp_info.max_line + 1
+        print("fidx {i}, sidx {j}".format(i=self.first_display_idx, j=self.select_idx))
         for i in range(disp_info.max_line):
             idx = self.first_display_idx + i
             if idx == len(self.obj_list):
@@ -296,9 +297,13 @@ class IPC:
             recv_packets += conn.recv()
         return recv_packets
     def send(self, packets: List[IPCPacket]) -> None:
+        broken_list = []
         for conn in self.connections:
             if conn.send(packets) == False:
-                self.connections.remove(conn)   # clean up broken connection
+                broken_list.append(conn)
+        # clean up broken connection
+        for broken in broken_list:
+            self.connections.remove(broken)
 
 class DisplayServer(object):
     
