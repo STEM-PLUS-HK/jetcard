@@ -14,6 +14,7 @@ import json
 from enum import Enum
 from typing import List, Tuple, Union, Any
 from uuid import uuid4
+from jtop import jtop
 
 UP_CHANNEL = 13
 RIGHT_CHANNEL = 15
@@ -308,7 +309,7 @@ class IPC:
 class DisplayServer(object):
     
     def __init__(self, *args, **kwargs):
-        self.display = Adafruit_SSD1306.SSD1306_128_32(rst=None, i2c_bus=1, gpio=1) 
+        self.display = Adafruit_SSD1306.SSD1306_128_32(rst=None, i2c_bus=7, gpio=1) 
         self.display.begin()
         self.display.clear()
         self.display.display()
@@ -446,11 +447,12 @@ class DisplayServer(object):
 
                 # set stats fields
                 top = 22
-                power_watts = '%.1f' % power_usage()
-                gpu_percent = '%02d%%' % int(round(gpu_usage() * 100.0, 1))
-                cpu_percent = '%02d%%' % int(round(cpu_usage() * 100.0, 1))
-                ram_percent = '%02d%%' % int(round(memory_usage() * 100.0, 1))
-                disk_percent = '%02d%%' % int(round(disk_usage() * 100.0, 1))
+                with jtop() as jetson:
+                    power_watts = str(jetson.nvpmodel)
+                    gpu_percent = '%02d%%' % int(jetson.gpu['ga10b']['status']['load'])
+                    cpu_percent = '%02d%%' % int(100 - jetson.cpu['total']['idle'])
+                    ram_percent = '%02d%%' % int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100)
+                    disk_percent = '%02d%%' % int(jetson.disk['used']/jetson.disk['total']*100)
                 
                 entries = [power_watts, cpu_percent, gpu_percent, ram_percent, disk_percent]
                 for i, entry in enumerate(entries):
