@@ -9,6 +9,7 @@ Description=JetCard display service
 [Service]
 Type=simple
 User=%s
+After=jtop.service
 ExecStart=/bin/sh -c "python3 -m jetcard.display_server"
 WorkingDirectory=%s
 Restart=always
