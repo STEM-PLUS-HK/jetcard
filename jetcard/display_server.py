@@ -427,13 +427,24 @@ class DisplayServer(object):
 
                 try:
                     with jtop() as jetson:
+                        ip_addrs = jetson.local_interfaces['interfaces']
+                        if 'eth0' in ip_addrs:
+                            ip_address = 'IP: ' + str(ip_addrs['eth0'])
+                        elif 'eth0:avahi' in ip_addrs:
+                            ip_address = 'IP: ' + str(ip_addrs['eth0:avahi'])
+                        elif 'wlan0' in ip_addrs:
+                            ip_address = 'IP: ' + str(ip_addrs['wlan0'])
+                        else:
+                            ip_address = 'IP: not available'
                         power_mode = str(jetson.nvpmodel)
                         power_watts = f"{int(jetson.power['tot']['power']/1000):2}W"
                         gpu_percent = f"{int(jetson.gpu['ga10b']['status']['load']):2}%"
                         cpu_percent = f"{int(100 - jetson.cpu['total']['idle']):2}%"
                         ram_percent = f"{int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100):2}%"
                         disk_percent = f"{int(jetson.disk['used']/jetson.disk['total']*100):2}%"
+                        
                 except Exception as e:
+                    ip_address = 'IP: not available'
                     power_mode = '0W'
                     power_watts = '00W'
                     gpu_percent = '00%'
@@ -443,14 +454,7 @@ class DisplayServer(object):
                 
                 # set IP address
                 top = -2
-                if ip_address('eth0:avahi') is not None:
-                    self.draw.text((4, top), 'IP: ' + str(ip_address('eth0:avahi')), font=self.font, fill=255)
-                elif ip_address('eth0') is not None:
-                    self.draw.text((4, top), 'IP: ' + str(ip_address('eth0')), font=self.font, fill=255)
-                elif ip_address('wlan0') is not None:
-                    self.draw.text((4, top), 'IP: ' + str(ip_address('wlan0')), font=self.font, fill=255)
-                else:
-                    self.draw.text((4, top), 'IP: not available')
+                self.draw.text((4, top), ip_address, font=self.font, fill=255)
                 
                 top = 6
                 power_mode_str = power_mode
