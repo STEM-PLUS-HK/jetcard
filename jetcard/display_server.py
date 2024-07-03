@@ -443,7 +443,9 @@ class DisplayServer(object):
                 
                 # set IP address
                 top = -2
-                if ip_address('eth0') is not None:
+                if ip_address('eth0:avahi') is not None:
+                    self.draw.text((4, top), 'IP: ' + str(ip_address('eth0:avahi')), font=self.font, fill=255)
+                elif ip_address('eth0') is not None:
                     self.draw.text((4, top), 'IP: ' + str(ip_address('eth0')), font=self.font, fill=255)
                 elif ip_address('wlan0') is not None:
                     self.draw.text((4, top), 'IP: ' + str(ip_address('wlan0')), font=self.font, fill=255)
