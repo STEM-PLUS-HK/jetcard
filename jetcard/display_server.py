@@ -425,6 +425,22 @@ class DisplayServer(object):
             else:
                 self.draw.rectangle((0, 0, self.image.width, self.image.height), outline=0, fill=0)
 
+                try:
+                    with jtop() as jetson:
+                        power_mode = str(jetson.nvpmodel)
+                        power_watts = f"{int(jetson.power['tot']['power']/1000):2}W"
+                        gpu_percent = f"{int(jetson.gpu['ga10b']['status']['load']):2}%"
+                        cpu_percent = f"{int(100 - jetson.cpu['total']['idle']):2}%"
+                        ram_percent = f"{int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100):2}%"
+                        disk_percent = f"{int(jetson.disk['used']/jetson.disk['total']*100):2}%"
+                except Exception as e:
+                    power_mode = '0W'
+                    power_watts = '00W'
+                    gpu_percent = '00%'
+                    cpu_percent = '00%'
+                    ram_percent = '00%'
+                    disk_percent = '00%'
+                
                 # set IP address
                 top = -2
                 if ip_address('eth0') is not None:
@@ -433,9 +449,9 @@ class DisplayServer(object):
                     self.draw.text((4, top), 'IP: ' + str(ip_address('wlan0')), font=self.font, fill=255)
                 else:
                     self.draw.text((4, top), 'IP: not available')
-
+                
                 top = 6
-                power_mode_str = power_mode()
+                power_mode_str = power_mode
                 self.draw.text((4, top), 'MODE: ' + power_mode_str, font=self.font, fill=255)
                 
                 # set stats headers
@@ -447,13 +463,6 @@ class DisplayServer(object):
 
                 # set stats fields
                 top = 22
-                with jtop() as jetson:
-                    power_watts = str(jetson.nvpmodel)
-                    gpu_percent = '%02d%%' % int(jetson.gpu['ga10b']['status']['load'])
-                    cpu_percent = '%02d%%' % int(100 - jetson.cpu['total']['idle'])
-                    ram_percent = '%02d%%' % int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100)
-                    disk_percent = '%02d%%' % int(jetson.disk['used']/jetson.disk['total']*100)
-                
                 entries = [power_watts, cpu_percent, gpu_percent, ram_percent, disk_percent]
                 for i, entry in enumerate(entries):
                     self.draw.text((i * offset + 4, top), entry, font=self.font, fill=255)
