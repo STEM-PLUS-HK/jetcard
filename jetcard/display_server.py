@@ -436,13 +436,20 @@ class DisplayServer(object):
                     try:
                         ip_addrs = jetson.local_interfaces['interfaces']
                         if 'eth0' in ip_addrs:
-                            ip_address = 'IP: ' + str(ip_addrs['eth0'])
+                            ip_address = 'IP-L: ' + str(ip_addrs['eth0'])
                         elif 'eth0:avahi' in ip_addrs:
-                            ip_address = 'IP: ' + str(ip_addrs['eth0:avahi'])
+                            ip_address = 'IP-L: ' + str(ip_addrs['eth0:avahi'])
                         elif 'wlan0' in ip_addrs:
-                            ip_address = 'IP: ' + str(ip_addrs['wlan0'])
+                            ip_address = 'IP-W: ' + str(ip_addrs['wlan0'])
                         elif 'enP8p1s0' in ip_addrs:
-                            ip_address = 'IP: ' + str(ip_addrs['enP8p1s0'])
+                            if ip_addrs['enP8p1s0'].startswith('169.254.'):
+                                # Link-local
+                                ip_address = 'IPLL: ' + str(ip_addrs['enP8p1s0'])
+                            else:
+                                # DHCP
+                                ip_address = 'IP-L: ' + str(ip_addrs['enP8p1s0'])
+                        elif 'wlP1p1s0' in ip_addrs:
+                            ip_address = 'IP-W: ' + str(ip_addrs['wlP1p1s0'])
                         else:
                             ip_address = 'IP: not available'
                     except Exception as e:
