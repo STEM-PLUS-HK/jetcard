@@ -425,8 +425,15 @@ class DisplayServer(object):
             else:
                 self.draw.rectangle((0, 0, self.image.width, self.image.height), outline=0, fill=0)
 
-                try:
-                    with jtop() as jetson:
+                ip_address = 'IP: not available'
+                power_mode = '--'
+                power_watts = '--W'
+                gpu_percent = '--%'
+                cpu_percent = '--%'
+                ram_percent = '--%'
+                disk_percent = '--%'
+                with jtop() as jetson:
+                    try:
                         ip_addrs = jetson.local_interfaces['interfaces']
                         if 'eth0' in ip_addrs:
                             ip_address = 'IP: ' + str(ip_addrs['eth0'])
@@ -434,23 +441,37 @@ class DisplayServer(object):
                             ip_address = 'IP: ' + str(ip_addrs['eth0:avahi'])
                         elif 'wlan0' in ip_addrs:
                             ip_address = 'IP: ' + str(ip_addrs['wlan0'])
+                        elif 'enP8p1s0' in ip_addrs:
+                            ip_address = 'IP: ' + str(ip_addrs['enP8p1s0'])
                         else:
                             ip_address = 'IP: not available'
+                    except Exception as e:
+                        pass
+                    try:
                         power_mode = str(jetson.nvpmodel)
+                    except Exception as e:
+                        pass
+                    try:
                         power_watts = f"{int(jetson.power['tot']['power']/1000):2}W"
-                        gpu_percent = f"{int(jetson.gpu['ga10b']['status']['load']):2}%"
+                    except Exception as e:
+                        pass
+                    try:
+                        gpu_percent = f"{int(jetson.gpu['gpu']['status']['load']):2}%"
+                    except Exception as e:
+                        pass
+                    try:
                         cpu_percent = f"{int(100 - jetson.cpu['total']['idle']):2}%"
+                    except Exception as e:
+                        pass
+                    try:
                         ram_percent = f"{int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100):2}%"
+                    except Exception as e:
+                        pass
+                    try:
                         disk_percent = f"{int(jetson.disk['used']/jetson.disk['total']*100):2}%"
+                    except Exception as e:
+                        pass
                         
-                except Exception as e:
-                    ip_address = 'IP: not available'
-                    power_mode = '0W'
-                    power_watts = '00W'
-                    gpu_percent = '00%'
-                    cpu_percent = '00%'
-                    ram_percent = '00%'
-                    disk_percent = '00%'
                 
                 # set IP address
                 top = -2
@@ -472,6 +493,8 @@ class DisplayServer(object):
                 entries = [power_watts, cpu_percent, gpu_percent, ram_percent, disk_percent]
                 for i, entry in enumerate(entries):
                     self.draw.text((i * offset + 4, top), entry, font=self.font, fill=255)
+
+                self.draw.text((offset + 4, 30), "HEY", font=self.font, fill=255)
 
                 self.display.image(self.image)
                 self.display.display()
