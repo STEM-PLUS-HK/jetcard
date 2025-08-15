@@ -494,8 +494,6 @@ class DisplayServer(object):
                 for i, entry in enumerate(entries):
                     self.draw.text((i * offset + 4, top), entry, font=self.font, fill=255)
 
-                self.draw.text((offset + 4, 30), "HEY", font=self.font, fill=255)
-
                 self.display.image(self.image)
                 self.display.display()
 
