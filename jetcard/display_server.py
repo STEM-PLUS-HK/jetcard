@@ -14,7 +14,7 @@ import json
 from enum import Enum
 from typing import List, Tuple, Union, Any
 from uuid import uuid4
-from jtop import jtop
+from jtop import jtop, core
 
 UP_CHANNEL = 13
 RIGHT_CHANNEL = 15
@@ -479,7 +479,7 @@ class DisplayServer(object):
                             disk_percent = f"{int(jetson.disk['used']/jetson.disk['total']*100):2}%"
                         except Exception as e:
                             pass
-                except jtop.core.exceptions.JtopException as e:
+                except core.exceptions.JtopException as e:
                     pass
                         
                 
