@@ -432,52 +432,55 @@ class DisplayServer(object):
                 cpu_percent = '--%'
                 ram_percent = '--%'
                 disk_percent = '--%'
-                with jtop() as jetson:
-                    try:
-                        ip_addrs = jetson.local_interfaces['interfaces']
-                        if 'eth0' in ip_addrs:
-                            ip_address = 'IP-L: ' + str(ip_addrs['eth0'])
-                        elif 'eth0:avahi' in ip_addrs:
-                            ip_address = 'IP-L: ' + str(ip_addrs['eth0:avahi'])
-                        elif 'wlan0' in ip_addrs:
-                            ip_address = 'IP-W: ' + str(ip_addrs['wlan0'])
-                        elif 'enP8p1s0' in ip_addrs:
-                            if ip_addrs['enP8p1s0'].startswith('169.254.'):
-                                # Link-local
-                                ip_address = 'IPLL: ' + str(ip_addrs['enP8p1s0'])
+                try:
+                    with jtop() as jetson:
+                        try:
+                            ip_addrs = jetson.local_interfaces['interfaces']
+                            if 'eth0' in ip_addrs:
+                                ip_address = 'IP-L: ' + str(ip_addrs['eth0'])
+                            elif 'eth0:avahi' in ip_addrs:
+                                ip_address = 'IP-L: ' + str(ip_addrs['eth0:avahi'])
+                            elif 'wlan0' in ip_addrs:
+                                ip_address = 'IP-W: ' + str(ip_addrs['wlan0'])
+                            elif 'enP8p1s0' in ip_addrs:
+                                if ip_addrs['enP8p1s0'].startswith('169.254.'):
+                                    # Link-local
+                                    ip_address = 'IPLL: ' + str(ip_addrs['enP8p1s0'])
+                                else:
+                                    # DHCP
+                                    ip_address = 'IP-L: ' + str(ip_addrs['enP8p1s0'])
+                            elif 'wlP1p1s0' in ip_addrs:
+                                ip_address = 'IP-W: ' + str(ip_addrs['wlP1p1s0'])
                             else:
-                                # DHCP
-                                ip_address = 'IP-L: ' + str(ip_addrs['enP8p1s0'])
-                        elif 'wlP1p1s0' in ip_addrs:
-                            ip_address = 'IP-W: ' + str(ip_addrs['wlP1p1s0'])
-                        else:
-                            ip_address = 'IP: not available'
-                    except Exception as e:
-                        pass
-                    try:
-                        power_mode = str(jetson.nvpmodel)
-                    except Exception as e:
-                        pass
-                    try:
-                        power_watts = f"{int(jetson.power['tot']['power']/1000):2}W"
-                    except Exception as e:
-                        pass
-                    try:
-                        gpu_percent = f"{int(jetson.gpu['gpu']['status']['load']):2}%"
-                    except Exception as e:
-                        pass
-                    try:
-                        cpu_percent = f"{int(100 - jetson.cpu['total']['idle']):2}%"
-                    except Exception as e:
-                        pass
-                    try:
-                        ram_percent = f"{int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100):2}%"
-                    except Exception as e:
-                        pass
-                    try:
-                        disk_percent = f"{int(jetson.disk['used']/jetson.disk['total']*100):2}%"
-                    except Exception as e:
-                        pass
+                                ip_address = 'IP: not available'
+                        except Exception as e:
+                            pass
+                        try:
+                            power_mode = str(jetson.nvpmodel)
+                        except Exception as e:
+                            pass
+                        try:
+                            power_watts = f"{int(jetson.power['tot']['power']/1000):2}W"
+                        except Exception as e:
+                            pass
+                        try:
+                            gpu_percent = f"{int(jetson.gpu['gpu']['status']['load']):2}%"
+                        except Exception as e:
+                            pass
+                        try:
+                            cpu_percent = f"{int(100 - jetson.cpu['total']['idle']):2}%"
+                        except Exception as e:
+                            pass
+                        try:
+                            ram_percent = f"{int(jetson.memory['RAM']['used']/jetson.memory['RAM']['tot']*100):2}%"
+                        except Exception as e:
+                            pass
+                        try:
+                            disk_percent = f"{int(jetson.disk['used']/jetson.disk['total']*100):2}%"
+                        except Exception as e:
+                            pass
+                except jtop.core.exceptions.JtopException as e:
+                    pass
                         
                 
                 # set IP address
